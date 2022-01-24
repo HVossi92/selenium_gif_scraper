@@ -1,46 +1,57 @@
+import time
+
+import requests
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.expected_conditions import presence_of_element_located
-from selenium.webdriver.support.wait import WebDriverWait
-import requests
 
 PATH = "/Applications/chromedriver"
-download_dir = "/Users/h.vosskamp/Documents/Private/Hagen/2021_22_WiSe/Master_Thesis/Webscraping/Lottie_Jsons/"
+download_dir = "/Users/h.vosskamp/Downloads/"
 
+def scrape_page():
+    driver = webdriver.Chrome(PATH)
+    url = 'https://gfycat.com/stickers/search/icon+gifs'
+    print(f"Scrape: {url}")
+    driver.get(url)
+    time.sleep(1)
 
-def scrape_pages(num_pages):
-    for page_number in range(num_pages):
-        page_number = page_number + 46
-        driver = webdriver.Chrome(PATH)
-        print(f"{page_number} Scrape 'https://lottiefiles.com/featured?page={page_number}'")
-        driver.get(f"https://lottiefiles.com/featured?page={page_number}")
+    try:
+        driver.execute_script("window.scrollBy(0,500)")
+        print("Page is ready!")
 
-        try:
-            WebDriverWait(driver, 10).until(presence_of_element_located((By.CLASS_NAME, 'lottieanimation')))
-            print("Page is ready!")
-            elements = driver.find_elements(By.CLASS_NAME, 'lottieanimation')
+        elements = driver.find_elements(By.CLASS_NAME, 'image')
+        last_element = ''
+        links = []
+        while True:
+            if last_element == elements[len(elements) - 1]:
+                break
             for element in elements:
-                print(f"{element} / {len(elements)} ond {page_number}")
-                get_json_and_write_to_disk(element)
-        except TimeoutException:
-            print("Loading took too much time!")
-        driver.quit()
+                links.append(element.get_attribute("src"))
+            last_element = elements[len(elements) - 1]
+            driver.execute_script("arguments[0].scrollIntoView();", last_element)
+            time.sleep(1)  # wait for page to load new content
+            elements = driver.find_elements(By.CLASS_NAME, 'image')
+
+        links = list(set(links))
+        for idx, link in enumerate(links):
+            print(f"{idx} / {len(links)} Link: {link}")
+            get_gif_and_write_to_disk(link)
+    except TimeoutException:
+        print("Loading took too much time!")
+    driver.quit()
 
 
-def get_json_and_write_to_disk(element):
+def get_gif_and_write_to_disk(link):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:55.0) Gecko/20100101 Firefox/55.0',
     }
-    url = element.get_attribute("src")
-    request = requests.get(url, headers=headers)
-    last_slash = url.rfind('/')
-    file_name = url[last_slash + 1:-4]
-    print(element.get_attribute("src"))
-    with open(download_dir + file_name + '.json', 'wb') as f:
+    request = requests.get(link, headers=headers)
+    last_slash = link.rfind('/')
+    file_name = link[last_slash + 1:-4]
+    with open(download_dir + file_name + '.gif', 'wb') as f:
         f.write(request.content)
 
 
 if __name__ == '__main__':
-    scrape_pages(98)
+    scrape_page()
     print("Done")
