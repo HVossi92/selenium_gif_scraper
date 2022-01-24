@@ -1,2 +1,2 @@
-# selenium_lottie_scraper
-Scrapes lotties files with selenium
+# selenium_gif_scraper
+Scrapes gif files with selenium
